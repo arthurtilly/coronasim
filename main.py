@@ -5,6 +5,9 @@ population = 4676000
 
 HOSPITAL_CAPACITY = 5000
 
+daysInMonths = [31,28,31,30,31,30,31,31,30,31,30,31]
+months = ["January","February","March","April","May","June","July","August","September","October","November","December"]
+
 # Variables
 class SimulationVars:
     def __init__(self):
@@ -25,6 +28,11 @@ class SimulationVars:
         
         # Current alert level
         self.alertLevel = 1
+        
+        # The current date
+        self.dayOfMonth = 1
+        self.month = 0
+        self.year = 2020
 
 simVars = SimulationVars()
 
@@ -74,11 +82,43 @@ def updateActiveCases(newAmount):
 def getNewInfected():
     activeCases = getActiveCases()
     return math.ceil((activeCases * (population - activeCases)) / population)
+
+def changeWeek():
+    simVars.dayOfMonth += 7
+    if simVars.dayOfMonth > daysInMonths[simVars.month]:
+        simVars.dayOfMonth -= daysInMonths[simVars.month]
+        simVars.month += 1
+        if simVars.month > 11:
+            simVars.month = 0
+            simVars.year += 1
+            
+def getDateDisplay():
+    if simVars.dayOfMonth in (1,21,31):
+        suffix = "st"
+    elif simVars.dayOfMonth in (2,22):
+        suffix = "nd"
+    elif simVars.dayOfMonth in (3,23):
+        suffix = "rd"
+    else:
+        suffix = "th"
+        
+    return "%d%s %s %d" % (simVars.dayOfMonth, suffix, months[simVars.month], simVars.year)
+
+def mainLoop():
+    print()
+    print("TOTAL DEATHS: %d" % simVars.deaths)
+    print("PEOPLE'S FAITH: %.1f%%" % simVars.faith)
+    print()
+    print("A - Change alert level")
+    print("C - Check details on active cases")
+    print("P - Progress to the next week")
     
+
 while 1:
-    updateActiveCases(getNewInfected())
-    print("Active %d deaths %d pop %d" % (getActiveCases(), simVars.deaths, population))
+    changeWeek()
+    print(getDateDisplay())
     time.sleep(0.5)
+    
     
 
 
