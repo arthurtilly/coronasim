@@ -5,17 +5,26 @@ population = 4676000
 HOSPITAL_CAPACITY = 5000
 
 # Variables
-cases = 0 # Total number of cases
+class SimulationVars:
+    def __init__(self):
+        self.cases = 0 # Total number of cases
+        
+        # Active cases for each past week. First element is current week, second is 1 week ago, etc.
+        # After 6 weeks all cases will recover
+        self.activeCases = [1,0,0,0,0,0,0]
+        
+        # Total number of deaths
+        self.deaths = 0
+        
+        # Number of recovered cases
+        self.recoveredCases = 0
+        
+        # The people's faith in the government
+        self.faith = 100.0
+        
+        # Current alert level
+        self.alertLevel = 1
 
-# Active cases for each past week. First element is current week, second is 1 week ago, etc.
-# After 6 weeks all cases will recover
-activeCases = [1,0,0,0,0,0,0]
-
-deaths = 0 # 
-recoveredCases = 0
-faith = 100.0
-happiness = 100.0
-alertLevel = 1
 baseDeathRate = 1
 baseRecoveryRate = 20
 
