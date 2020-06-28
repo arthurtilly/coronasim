@@ -175,12 +175,14 @@ def progressWeek():
     updateActiveCases(newCases)
    
     # Update people's happiness based on the alert level they are staying at.
-    if simVars.alertLevel == 2:
-        simVars.happiness -= 1
-    elif simVars.alertLevel == 3:
+    if simVars.alertLevel == 1:
+        simVars.happiness += 5
+    elif simVars.alertLevel == 2:
         simVars.happiness -= 5
-    elif simVars.alertLevel == 4:
+    elif simVars.alertLevel == 3:
         simVars.happiness -= 10
+    elif simVars.alertLevel == 4:
+        simVars.happiness -= 15
         
     # Cap happiness at 100%
     if simVars.happiness > 100:
