@@ -4,8 +4,6 @@ import pickle
 
 population = 4676000
 
-HOSPITAL_CAPACITY = 5000
-
 daysInMonths = [31,28,31,30,31,30,31,31,30,31,30,31]
 months = ["January","February","March","April","May","June","July","August","September","October","November","December"]
 
@@ -16,7 +14,7 @@ class SimulationVars:
         
         # Active cases for each past week. First element is current week, second is 1 week ago, etc.
         # After 6 weeks all cases will recover
-        self.activeCases = [1,0,0,0,0,0,0]
+        self.activeCases = [10,0,0,0,0,0,0]
         
         # Total number of deaths
         self.deaths = 0
@@ -79,8 +77,17 @@ def updateActiveCases(newAmount):
     simVars.activeCases[0] = newAmount # Add current cases
 
 def getNewInfected():
-    activeCases = getActiveCases()
-    return math.ceil((((activeCases/population) * ((population - activeCases)/population))) * population)
+    activeCases = simVars.activeCases[0] + simVars.activeCases[1]
+    newInfected = math.floor((((activeCases/population) * ((population - activeCases)/population))) * population)
+    
+    if simVars.alertLevel == 2:
+        newInfected *= 0.5
+    elif simVars.alertLevel == 3:
+        newInfected *= 0.2
+    elif simVars.alertLevel == 4:
+        newInfected *= 0.05
+    
+    return newInfected
 
 def changeWeek():
     simVars.dayOfMonth += 7
@@ -129,7 +136,21 @@ def progressWeek():
     oldDeaths = simVars.deaths
     updateActiveCases(newCases)
     
-    printWeekHeader(newCases, simVars.deaths - oldDeaths)
+    if simVars.alertLevel == 1:
+        simVars.happiness += 5
+    if simVars.alertLevel == 2:
+        simVars.happiness -= 5
+    elif simVars.alertLevel == 3:
+        simVars.happiness -= 10
+    elif simVars.alertLevel == 4:
+        simVars.happiness -= 15
+        
+    if simVars.happiness > 100:
+        simVars.happiness = 100
+        
+    newDeaths = simVars.deaths - oldDeaths
+    
+    printWeekHeader(newCases, newDeaths)
 
 def saveProgress():
     global simVars
@@ -141,7 +162,23 @@ def checkDetails():
     pass
 
 def changeAlertLevel():
-    pass
+    print("Switch to which alert level? (1 - 4)")
+    
+    while 1: 
+        ans = getInt(">>> ")
+        if ans < 1 or ans > 4:
+            print("Answer out of range.")
+        else:
+            if ans == 3 and getTotalCases() < 100:
+                print("Too early to switch to Level 3! (Cases should be over 100)")
+            elif ans == 4 and getTotalCases() < 500:
+                print("Too early to switch to Level 4! (Cases should be over 500)")
+            elif ans == simVars.alertLevel:
+                print("You were already at alert level %d." % ans)
+            else:
+                print("Switched to alert level %d." % ans)
+                simVars.alertLevel = ans
+            return
 
 
 def mainLoop():
@@ -166,13 +203,15 @@ def mainLoop():
 print('''
 ===== Welcome to CoronaSim! =====
 
-The country of New Zealand has just had its first recorded case of COVID-19
+The country of New Zealand has just had its first few recorded cases of COVID-19
 coming in from the border. As the Minister of Health, you must guide the
-country to make sure the pandemic doesn't get out of hand! But make sure
-not to act too hastily, otherwise the population might get unhappy with you...
+country to make sure the pandemic doesn't get out of hand!
 
 You lose when happiness hits 0% or deaths rise above 10,000.
 You win when there are no active cases.
+
+Important info:
+* You cannot raise the alert level too high when cases are too low.
 
 Would you like to load a previous game? (y/n)''')
 
