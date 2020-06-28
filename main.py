@@ -1,5 +1,6 @@
 import math
 import time
+import pickle
 
 population = 4676000
 
@@ -23,8 +24,8 @@ class SimulationVars:
         # Number of recovered cases
         self.recoveredCases = 0
         
-        # The people's faith in the government
-        self.faith = 100.0
+        # The people's happiness
+        self.happiness = 100.0
         
         # Current alert level
         self.alertLevel = 1
@@ -81,7 +82,7 @@ def updateActiveCases(newAmount):
 
 def getNewInfected():
     activeCases = getActiveCases()
-    return math.ceil((activeCases * (population - activeCases)) / population)
+    return math.ceil((((activeCases/population) * ((population - activeCases)/population))) * population)
 
 def changeWeek():
     simVars.dayOfMonth += 7
@@ -104,23 +105,62 @@ def getDateDisplay():
         
     return "%d%s %s %d" % (simVars.dayOfMonth, suffix, months[simVars.month], simVars.year)
 
+def printWeekHeader():
+    print()
+    print('========= %s =========' % getDateDisplay())
+    print()
+    print("Total cases: %d" % getTotalCases())
+    print("Total active cases: %d" % getActiveCases())
+    print("Total deaths: %d" % simVars.deaths)
+    print("People's happiness: %.1f%%" % simVars.happiness)    
+
+def getInt(string):
+    loop = True
+    while loop:
+        answer = input(string)
+        try:
+            return int(answer)
+        except ValueError:
+            print("Please enter an integer.")
+
+def progressWeek():
+    changeWeek()
+    updateActiveCases(getNewInfected())
+    printWeekHeader()
+
+def saveProgress():
+    global simVars
+    p = pickle.Pickler(open("progress.dat", "wb"))
+    p.dump(simVars)
+
+def checkDetails():
+    pass
+
+def changeAlertLevel():
+    pass
+
+
 def mainLoop():
     print()
-    print("TOTAL DEATHS: %d" % simVars.deaths)
-    print("PEOPLE'S FAITH: %.1f%%" % simVars.faith)
-    print()
     print("A - Change alert level")
+    print("S - Save progress")
     print("C - Check details on active cases")
     print("P - Progress to the next week")
     
+    cmd = input(">>> ")
+    if cmd.upper() == "A":
+        changeAlertLevel()
+    elif cmd.upper() == "S":
+        saveProgress()
+    elif cmd.upper() == "C":
+        checkDetails()
+    elif cmd.upper() == "P":
+        progressWeek()
+    else:
+        print("Invalid command.")
+    
 
+
+printWeekHeader()
 while 1:
-    changeWeek()
-    print(getDateDisplay())
-    time.sleep(0.5)
-    
-    
-
-
-
-
+    mainLoop()
