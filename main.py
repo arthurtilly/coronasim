@@ -4,6 +4,10 @@ import pickle
 
 population = 4676000
 
+
+gameEnd = False
+
+# Used for display purposes
 daysInMonths = [31,28,31,30,31,30,31,31,30,31,30,31]
 months = ["January","February","March","April","May","June","July","August","September","October","November","December"]
 
@@ -32,9 +36,13 @@ class SimulationVars:
         self.dayOfMonth = 1
         self.month = 0
         self.year = 2020
+        
+        # Used for the display at the end of the game.
+        self.weeksAtLevel = [0,0,0,0]
 
 baseDeathRate = 2
 baseRecoveryRate = 20
+
 
 # Return the total number of active cases.
 def getActiveCases():
@@ -44,9 +52,11 @@ def getActiveCases():
         cases += num
     return cases
 
+
 def getTotalCases():
     global simVars
     return getActiveCases() + simVars.deaths + simVars.recoveredCases
+
 
 def handleActiveCases(amount, weeksOld):
     global simVars
@@ -63,6 +73,7 @@ def handleActiveCases(amount, weeksOld):
     simVars.recoveredCases += recoveries
     return amount - recoveries # Return remaining number of active cases
 
+
 def updateActiveCases(newAmount): 
     global simVars
     
@@ -76,10 +87,15 @@ def updateActiveCases(newAmount):
             
     simVars.activeCases[0] = newAmount # Add current cases
 
+
+# Find the number of new cases in a week.
 def getNewInfected():
     activeCases = simVars.activeCases[0] + simVars.activeCases[1]
-    newInfected = math.floor((((activeCases/population) * ((population - activeCases)/population))) * population)
+    # Exponential model, proportional to total infected and total susceptible.
+    # Because COVID-19 can be gotten multiple times, people who have recovered are still susceptible.
+    newInfected = (activeCases/population) * ((population - activeCases)/population) * population
     
+    # Adjust new cases based on the current alert level.
     if simVars.alertLevel == 2:
         newInfected *= 0.5
     elif simVars.alertLevel == 3:
@@ -87,7 +103,7 @@ def getNewInfected():
     elif simVars.alertLevel == 4:
         newInfected *= 0.05
     
-    return newInfected
+    return math.floor(newInfected)
 
 def changeWeek():
     simVars.dayOfMonth += 7
@@ -131,6 +147,8 @@ def getInt(string):
             print("Please enter an integer.")
 
 def progressWeek():
+    global gameEnd
+    
     changeWeek()
     newCases = getNewInfected()
     oldDeaths = simVars.deaths
@@ -148,9 +166,14 @@ def progressWeek():
     if simVars.happiness > 100:
         simVars.happiness = 100
         
-    newDeaths = simVars.deaths - oldDeaths
-    
-    printWeekHeader(newCases, newDeaths)
+    if simVars.happiness <= 0:
+        gameEnd = True
+    elif simVars.deaths >= 10000:
+        gameEnd = True
+    else:
+        newDeaths = simVars.deaths - oldDeaths
+        simVars.weeksAtLevel[simVars.alertLevel - 1] += 1
+        printWeekHeader(newCases, newDeaths)
 
 def saveProgress():
     global simVars
@@ -159,9 +182,15 @@ def saveProgress():
     print("Progress saved.")
 
 def checkDetails():
-    pass
+    global simVars
+    print('New cases: %d' % simVars.activeCases[0])
+    for i in range(1,6):
+        print('%d week old cases: %d' % (i, simVars.activeCases[i]))
+    print('Recovered cases: %d' % simVars.recoveredCases)
+    print('Deaths: %d' % simVars.deaths)
 
 def changeAlertLevel():
+    global simVars
     print("Switch to which alert level? (1 - 4)")
     
     while 1: 
@@ -171,8 +200,8 @@ def changeAlertLevel():
         else:
             if ans == 3 and getTotalCases() < 100:
                 print("Too early to switch to Level 3! (Cases should be over 100)")
-            elif ans == 4 and getTotalCases() < 500:
-                print("Too early to switch to Level 4! (Cases should be over 500)")
+            elif ans == 4 and getTotalCases() < 200:
+                print("Too early to switch to Level 4! (Cases should be over 200)")
             elif ans == simVars.alertLevel:
                 print("You were already at alert level %d." % ans)
             else:
@@ -182,11 +211,11 @@ def changeAlertLevel():
 
 
 def mainLoop():
-    print()
-    print("A - Change alert level")
-    print("S - Save progress")
-    print("C - Check details on active cases")
-    print("P - Progress to the next week")
+    print('''
+A - Change alert level
+S - Save progress
+C - Check details on active cases
+P - Progress to the next week''')
     
     cmd = input(">>> ")
     if cmd.upper() == "A":
@@ -204,7 +233,7 @@ print('''
 ===== Welcome to CoronaSim! =====
 
 The country of New Zealand has just had its first few recorded cases of COVID-19
-coming in from the border. As the Minister of Health, you must guide the
+coming in from the border. As the Director General of Health, you must guide the
 country to make sure the pandemic doesn't get out of hand!
 
 You lose when happiness hits 0% or deaths rise above 10,000.
@@ -212,22 +241,52 @@ You win when there are no active cases.
 
 Important info:
 * You cannot raise the alert level too high when cases are too low.
+* At alert level 1, happiness will increase, so it is worth using alert level 1 sometimes.
+* Happiness will decrease faster the higher the alert level is.
 
 Would you like to load a previous game? (y/n)''')
 
+# Check to load a game
 ans = input('>>> ')
 if ans.upper() == 'Y':
     try:
+        # Load the saved game
         up = pickle.Unpickler(open("progress.dat", "rb"))
         simVars = up.load()
         print("Loading game...")
     except FileNotFoundError:
-        print("No progress found! Starting a new game...")
+        # No save data found
+        print("No sava data found! Starting a new game...")
         simVars = SimulationVars()
 else:
+    # Don't load, start a new game
     print("Starting a new game...")
     simVars = SimulationVars()
 
-printWeekHeader(None, None)
+printWeekHeader(None, None) # None makes it not print the new case information
+
+# Main loop
 while 1:
     mainLoop()
+    if gameEnd:
+        print()
+        if simVars.happiness <= 0:
+            print("Happiness has reached 0%!")
+        elif simVars.deaths >= 10000:
+            print("Deaths have gone over 10,000!")
+        print("You've failed to handle the COVID-19 pandemic well, and your reputation is ruined.")
+        print("YOU LOSE!")
+        break
+    if getActiveCases() == 0:
+        print()
+        print("There are no active cases in the entire country.")
+        print("New Zealand has successfully controlled the COVID-19 pandemic.")
+        print()
+        print("YOU WIN!")
+        print()
+        print("Final happiness: %.1f%%" % simVars.happiness)
+        print("Total cases: %d" % getTotalCases())
+        print("Recovered cases: %d" % simVars.recoveredCases)
+        print("Total deaths: %d" % simVars.deaths)
+        print("You spent: %d weeks at level 1, %d weeks at level 2, %d weeks at level 3, %d weeks at level 4." % (simVars.weeksAtLevel[0],simVars.weeksAtLevel[1],simVars.weeksAtLevel[2],simVars.weeksAtLevel[3]))
+        break
