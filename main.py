@@ -35,9 +35,7 @@ class SimulationVars:
         self.month = 0
         self.year = 2020
 
-simVars = SimulationVars()
-
-baseDeathRate = 1
+baseDeathRate = 2
 baseRecoveryRate = 20
 
 # Return the total number of active cases.
@@ -56,7 +54,7 @@ def handleActiveCases(amount, weeksOld):
     global simVars
     
     # Todo: when hospitals are overloaded, death rate will increase drastically
-    deathRate = baseDeathRate - 0.15*weeksOld # from 1% for new cases to 0.25% for 5 week old cases
+    deathRate = baseDeathRate - 0.3*weeksOld # from 2% for new cases to 0.5% for 5 week old cases
     recoveryRate = baseRecoveryRate + 12*weeksOld # from 20% for new cases to 80% for 5 week old cases
     
     newDeaths = math.floor(amount * (deathRate / 100.0))
@@ -105,14 +103,16 @@ def getDateDisplay():
         
     return "%d%s %s %d" % (simVars.dayOfMonth, suffix, months[simVars.month], simVars.year)
 
-def printWeekHeader():
+def printWeekHeader(newCases, newDeaths):
     print()
     print('========= %s =========' % getDateDisplay())
+    print("--- ALERT LEVEL %d ---" % simVars.alertLevel)
+    if newCases is not None: print("In the past week, there have been %d new cases and %d deaths." % (newCases, newDeaths))
     print()
     print("Total cases: %d" % getTotalCases())
     print("Total active cases: %d" % getActiveCases())
     print("Total deaths: %d" % simVars.deaths)
-    print("People's happiness: %.1f%%" % simVars.happiness)    
+    print("People's happiness: %.1f%%" % simVars.happiness)
 
 def getInt(string):
     loop = True
@@ -125,13 +125,17 @@ def getInt(string):
 
 def progressWeek():
     changeWeek()
-    updateActiveCases(getNewInfected())
-    printWeekHeader()
+    newCases = getNewInfected()
+    oldDeaths = simVars.deaths
+    updateActiveCases(newCases)
+    
+    printWeekHeader(newCases, simVars.deaths - oldDeaths)
 
 def saveProgress():
     global simVars
     p = pickle.Pickler(open("progress.dat", "wb"))
     p.dump(simVars)
+    print("Progress saved.")
 
 def checkDetails():
     pass
@@ -159,8 +163,32 @@ def mainLoop():
     else:
         print("Invalid command.")
     
+print('''
+===== Welcome to CoronaSim! =====
 
+The country of New Zealand has just had its first recorded case of COVID-19
+coming in from the border. As the Minister of Health, you must guide the
+country to make sure the pandemic doesn't get out of hand! But make sure
+not to act too hastily, otherwise the population might get unhappy with you...
 
-printWeekHeader()
+You lose when happiness hits 0% or deaths rise above 10,000.
+You win when there are no active cases.
+
+Would you like to load a previous game? (y/n)''')
+
+ans = input('>>> ')
+if ans.upper() == 'Y':
+    try:
+        up = pickle.Unpickler(open("progress.dat", "rb"))
+        simVars = up.load()
+        print("Loading game...")
+    except FileNotFoundError:
+        print("No progress found! Starting a new game...")
+        simVars = SimulationVars()
+else:
+    print("Starting a new game...")
+    simVars = SimulationVars()
+
+printWeekHeader(None, None)
 while 1:
     mainLoop()
